@@ -383,7 +383,7 @@ const SearchExport = () => {
                 <CardContent className="space-y-6">
                   <div>
                     <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
-                      <Tv className="h-4 w-4" />
+                      <FileSpreadsheet className="h-4 w-4" />
                       Select Channels
                     </h3>
                     <div className="flex items-center justify-between mb-2">

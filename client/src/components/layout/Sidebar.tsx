@@ -69,18 +69,17 @@ const Sidebar = ({ isSidebarOpen }: SidebarProps) => {
             <ul>
               {group.items.map((item, itemIndex) => (
                 <li key={itemIndex} className="mb-1">
-                  <Link href={item.path}>
-                    <a 
-                      className={cn(
-                        "flex items-center p-2 rounded-md", 
-                        location === item.path 
-                          ? "bg-primary bg-opacity-10 text-primary" 
-                          : "hover:bg-neutral-100"
-                      )}
-                    >
-                      {item.icon}
-                      <span>{item.name}</span>
-                    </a>
+                  <Link 
+                    href={item.path}
+                    className={cn(
+                      "flex items-center p-2 rounded-md", 
+                      location === item.path 
+                        ? "bg-primary bg-opacity-10 text-primary" 
+                        : "hover:bg-neutral-100"
+                    )}
+                  >
+                    {item.icon}
+                    <span>{item.name}</span>
                   </Link>
                 </li>
               ))}
