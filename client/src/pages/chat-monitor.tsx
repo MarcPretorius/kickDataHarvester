@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import Layout from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -113,7 +112,7 @@ const ChatMonitor = () => {
   };
 
   return (
-    <Layout>
+    <>
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-2">Chat Monitor</h1>
         <p className="text-neutral-500">
@@ -277,7 +276,7 @@ const ChatMonitor = () => {
           </TabsContent>
         </Tabs>
       </Card>
-    </Layout>
+    </>
   );
 };
 

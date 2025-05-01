@@ -12,17 +12,19 @@ import NotFound from "@/pages/not-found";
 
 function App() {
   return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/chat-monitor" component={ChatMonitor} />
-      <Route path="/analytics" component={Analytics} />
-      <Route path="/stored-data" component={StoredData} />
-      <Route path="/user-analysis" component={UserAnalysis} />
-      <Route path="/search-export" component={SearchExport} />
-      <Route path="/api-settings" component={ApiSettings} />
-      <Route path="/moderation" component={Moderation} />
-      <Route component={NotFound} />
-    </Switch>
+    <Layout>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/chat-monitor" component={ChatMonitor} />
+        <Route path="/analytics" component={Analytics} />
+        <Route path="/stored-data" component={StoredData} />
+        <Route path="/user-analysis" component={UserAnalysis} />
+        <Route path="/search-export" component={SearchExport} />
+        <Route path="/api-settings" component={ApiSettings} />
+        <Route path="/moderation" component={Moderation} />
+        <Route component={NotFound} />
+      </Switch>
+    </Layout>
   );
 }
 

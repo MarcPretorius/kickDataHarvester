@@ -47,7 +47,7 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <Layout>
+    <>
       <ConnectionStatus />
       
       <StatsOverview />
@@ -60,7 +60,7 @@ const Dashboard = () => {
       <RecentMessages />
       
       <ConnectionConfig />
-    </Layout>
+    </>
   );
 };
 
