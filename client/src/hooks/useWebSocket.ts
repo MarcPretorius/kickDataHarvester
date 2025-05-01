@@ -104,18 +104,18 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     return false;
   }, []);
   
+  // First connection effect - will only run once on mount
   useEffect(() => {
     if (automaticOpen) {
-      // Only attempt to connect when the component mounts
       connect();
     }
     
-    // Only disconnect when the component unmounts
+    // Cleanup on unmount
     return () => {
       disconnect();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [automaticOpen]); // Removed dependencies to prevent re-connection cycles
+  }, []); // Only run on mount and unmount
   
   return {
     isConnected,
