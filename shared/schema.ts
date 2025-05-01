@@ -46,6 +46,12 @@ export const chatMessages = pgTable("chat_messages", {
   userType: text("user_type").notNull().default("regular"), // regular, subscriber, moderator
   message: text("message").notNull(),
   timestamp: timestamp("timestamp").notNull().defaultNow(),
+  // Moderation fields
+  isHidden: boolean("is_hidden").notNull().default(false),
+  isFlagged: boolean("is_flagged").notNull().default(false),
+  moderationReason: text("moderation_reason"),
+  moderatedBy: text("moderated_by"),
+  moderatedAt: timestamp("moderated_at"),
 });
 
 export const insertChatMessageSchema = createInsertSchema(chatMessages).pick({
@@ -56,6 +62,16 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).pick({
   message: true,
   timestamp: true,
 });
+
+// Schema for moderation actions
+export const moderationActionSchema = z.object({
+  messageId: z.number(),
+  action: z.enum(['hide', 'flag', 'unhide', 'unflag']),
+  reason: z.string().optional(),
+  moderatedBy: z.string(),
+});
+
+export type ModerationAction = z.infer<typeof moderationActionSchema>;
 
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
@@ -78,6 +94,28 @@ export const insertStatisticsSchema = createInsertSchema(statistics).pick({
 
 export type InsertStatistics = z.infer<typeof insertStatisticsSchema>;
 export type Statistics = typeof statistics.$inferSelect;
+
+// Content filter keywords table
+export const contentFilters = pgTable("content_filters", {
+  id: serial("id").primaryKey(),
+  keyword: text("keyword").notNull(),
+  type: text("type").notNull().default("block"), // block, flag, replace
+  replacement: text("replacement"), // Used when type is 'replace'
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: text("created_by"),
+});
+
+export const insertContentFilterSchema = createInsertSchema(contentFilters).pick({
+  keyword: true,
+  type: true,
+  replacement: true,
+  isActive: true,
+  createdBy: true,
+});
+
+export type InsertContentFilter = z.infer<typeof insertContentFilterSchema>;
+export type ContentFilter = typeof contentFilters.$inferSelect;
 
 // Define relations
 export const usersRelations = relations(users, ({ many }) => ({

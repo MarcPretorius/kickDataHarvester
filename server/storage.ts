@@ -2,10 +2,12 @@ import {
   User, InsertUser, users, 
   Channel, InsertChannel, channels,
   ChatMessage, InsertChatMessage, chatMessages,
-  Statistics, InsertStatistics, statistics
+  Statistics, InsertStatistics, statistics,
+  ContentFilter, InsertContentFilter, contentFilters,
+  ModerationAction
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, between, count, desc, gt, lt, sum, sql } from 'drizzle-orm';
+import { eq, and, between, count, desc, gt, lt, sum, sql, like, or, inArray } from 'drizzle-orm';
 
 // Interface for storage operations
 export interface IStorage {
@@ -27,6 +29,19 @@ export interface IStorage {
   getChatMessageCount(): Promise<number>;
   getChatMessageCountByChannel(channelId: number): Promise<number>;
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  
+  // Moderation operations
+  moderateMessage(action: ModerationAction): Promise<ChatMessage>;
+  getFlaggedMessages(limit?: number, offset?: number): Promise<ChatMessage[]>;
+  getMessagesByContent(searchTerm: string, limit?: number, offset?: number): Promise<ChatMessage[]>;
+  
+  // Content filter operations
+  getContentFilters(): Promise<ContentFilter[]>;
+  getContentFilter(id: number): Promise<ContentFilter | undefined>;
+  createContentFilter(filter: InsertContentFilter): Promise<ContentFilter>;
+  updateContentFilter(id: number, updates: Partial<ContentFilter>): Promise<ContentFilter | undefined>;
+  deleteContentFilter(id: number): Promise<boolean>;
+  applyContentFilters(message: string): Promise<{filteredMessage: string, hasBeenFiltered: boolean, flags: string[]}>;
   
   // Statistics operations
   getStatistics(channelId: number, startDate: Date, endDate: Date): Promise<Statistics[]>;
@@ -196,6 +211,117 @@ export class MemStorage implements IStorage {
   async getDataStorageSize(): Promise<number> {
     return this.dataSize;
   }
+
+  // Moderation operations
+  async moderateMessage(action: ModerationAction): Promise<ChatMessage> {
+    const { messageId, action: actionType, reason, moderatedBy } = action;
+    const message = this.chatMessages.get(messageId);
+    if (!message) {
+      throw new Error(`Message with ID ${messageId} not found`);
+    }
+
+    // Update message with moderation details
+    const updatedMessage = { 
+      ...message,
+      moderatedBy,
+      moderatedAt: new Date(),
+      moderationReason: reason || null,
+      isHidden: actionType === 'hide' ? true : actionType === 'unhide' ? false : message.isHidden || false,
+      isFlagged: actionType === 'flag' ? true : actionType === 'unflag' ? false : message.isFlagged || false
+    };
+
+    this.chatMessages.set(messageId, updatedMessage);
+    return updatedMessage;
+  }
+
+  async getFlaggedMessages(limit: number = 100, offset: number = 0): Promise<ChatMessage[]> {
+    const messages = Array.from(this.chatMessages.values())
+      .filter(message => message.isFlagged);
+    
+    // Sort by timestamp, newest first
+    messages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return messages.slice(offset, offset + limit);
+  }
+
+  async getMessagesByContent(searchTerm: string, limit: number = 100, offset: number = 0): Promise<ChatMessage[]> {
+    const messages = Array.from(this.chatMessages.values())
+      .filter(message => message.message.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Sort by timestamp, newest first
+    messages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return messages.slice(offset, offset + limit);
+  }
+
+  // Content filter operations
+  private contentFilters: Map<number, ContentFilter> = new Map();
+  private contentFilterId: number = 1;
+
+  async getContentFilters(): Promise<ContentFilter[]> {
+    return Array.from(this.contentFilters.values());
+  }
+
+  async getContentFilter(id: number): Promise<ContentFilter | undefined> {
+    return this.contentFilters.get(id);
+  }
+
+  async createContentFilter(filter: InsertContentFilter): Promise<ContentFilter> {
+    const id = this.contentFilterId++;
+    const newFilter: ContentFilter = { 
+      ...filter, 
+      id,
+      createdAt: new Date(),
+      isActive: filter.isActive !== undefined ? filter.isActive : true
+    };
+    this.contentFilters.set(id, newFilter);
+    return newFilter;
+  }
+
+  async updateContentFilter(id: number, updates: Partial<ContentFilter>): Promise<ContentFilter | undefined> {
+    const filter = this.contentFilters.get(id);
+    if (!filter) return undefined;
+    
+    const updatedFilter = { ...filter, ...updates };
+    this.contentFilters.set(id, updatedFilter);
+    return updatedFilter;
+  }
+
+  async deleteContentFilter(id: number): Promise<boolean> {
+    return this.contentFilters.delete(id);
+  }
+
+  async applyContentFilters(message: string): Promise<{filteredMessage: string, hasBeenFiltered: boolean, flags: string[]}> {
+    let filteredMessage = message;
+    let hasBeenFiltered = false;
+    const flags: string[] = [];
+
+    // Get all active filters
+    const filters = Array.from(this.contentFilters.values()).filter(f => f.isActive);
+
+    // Apply each filter to the message
+    for (const filter of filters) {
+      // Create a case-insensitive regular expression
+      const regex = new RegExp(filter.keyword, 'gi');
+      
+      if (regex.test(filteredMessage)) {
+        // Word found in message
+        if (filter.type === 'block') {
+          // Add to flags for blocked content
+          flags.push(filter.keyword);
+          hasBeenFiltered = true;
+        } else if (filter.type === 'flag') {
+          // Add to flags but don't modify the message
+          flags.push(filter.keyword);
+          hasBeenFiltered = true;
+        } else if (filter.type === 'replace' && filter.replacement) {
+          // Replace the word with the specified replacement
+          filteredMessage = filteredMessage.replace(regex, filter.replacement);
+          hasBeenFiltered = true;
+        }
+      }
+    }
+
+    return { filteredMessage, hasBeenFiltered, flags };
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -353,6 +479,125 @@ export class DatabaseStorage implements IStorage {
     // Estimate storage based on message count (rough estimate: 200 bytes per message)
     const messageCount = await this.getChatMessageCount();
     return messageCount * 200;
+  }
+
+  // Moderation operations
+  async moderateMessage(action: ModerationAction): Promise<ChatMessage> {
+    const { messageId, action: actionType, reason, moderatedBy } = action;
+    const updates: any = {
+      moderatedBy,
+      moderatedAt: new Date()
+    };
+
+    if (reason) {
+      updates.moderationReason = reason;
+    }
+
+    // Set the appropriate flags based on the action type
+    if (actionType === 'hide') {
+      updates.isHidden = true;
+    } else if (actionType === 'unhide') {
+      updates.isHidden = false;
+    } else if (actionType === 'flag') {
+      updates.isFlagged = true;
+    } else if (actionType === 'unflag') {
+      updates.isFlagged = false;
+    }
+
+    // Update the message with moderation details
+    const [updatedMessage] = await db.update(chatMessages)
+      .set(updates)
+      .where(eq(chatMessages.id, messageId))
+      .returning();
+
+    return updatedMessage;
+  }
+
+  async getFlaggedMessages(limit: number = 100, offset: number = 0): Promise<ChatMessage[]> {
+    return await db.select()
+      .from(chatMessages)
+      .where(eq(chatMessages.isFlagged, true))
+      .orderBy(desc(chatMessages.timestamp))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async getMessagesByContent(searchTerm: string, limit: number = 100, offset: number = 0): Promise<ChatMessage[]> {
+    return await db.select()
+      .from(chatMessages)
+      .where(like(chatMessages.message, `%${searchTerm}%`))
+      .orderBy(desc(chatMessages.timestamp))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  // Content filter operations
+  async getContentFilters(): Promise<ContentFilter[]> {
+    return await db.select().from(contentFilters);
+  }
+
+  async getContentFilter(id: number): Promise<ContentFilter | undefined> {
+    const [filter] = await db.select()
+      .from(contentFilters)
+      .where(eq(contentFilters.id, id));
+    return filter;
+  }
+
+  async createContentFilter(filter: InsertContentFilter): Promise<ContentFilter> {
+    const [newFilter] = await db.insert(contentFilters)
+      .values(filter)
+      .returning();
+    return newFilter;
+  }
+
+  async updateContentFilter(id: number, updates: Partial<ContentFilter>): Promise<ContentFilter | undefined> {
+    const [updatedFilter] = await db.update(contentFilters)
+      .set(updates)
+      .where(eq(contentFilters.id, id))
+      .returning();
+    return updatedFilter;
+  }
+
+  async deleteContentFilter(id: number): Promise<boolean> {
+    const result = await db.delete(contentFilters)
+      .where(eq(contentFilters.id, id));
+    return !!result.rowCount && result.rowCount > 0;
+  }
+
+  async applyContentFilters(message: string): Promise<{filteredMessage: string, hasBeenFiltered: boolean, flags: string[]}> {
+    // Get all active filters
+    const filters = await db.select()
+      .from(contentFilters)
+      .where(eq(contentFilters.isActive, true));
+    
+    let filteredMessage = message;
+    let hasBeenFiltered = false;
+    const flags: string[] = [];
+
+    // Apply each filter to the message
+    for (const filter of filters) {
+      // Create a case-insensitive regular expression
+      const regex = new RegExp(filter.keyword, 'gi');
+      
+      if (regex.test(filteredMessage)) {
+        // Word found in message
+        if (filter.type === 'block') {
+          // Add to flags for blocked content
+          flags.push(filter.keyword);
+          hasBeenFiltered = true;
+        } else if (filter.type === 'flag') {
+          // Add to flags but don't modify the message
+          flags.push(filter.keyword);
+          hasBeenFiltered = true;
+        } else if (filter.type === 'replace' && filter.replacement) {
+          // Replace the word with the specified replacement
+          filteredMessage = filteredMessage.replace(regex, filter.replacement);
+          hasBeenFiltered = true;
+        }
+      }
+    }
+
+    return { filteredMessage, hasBeenFiltered, flags };
   }
 }
 
