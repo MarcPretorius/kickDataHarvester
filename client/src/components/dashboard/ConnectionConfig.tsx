@@ -18,12 +18,11 @@ const ConnectionConfig = () => {
 
   const toggleTracking = async (channel: Channel) => {
     try {
-      await apiRequest(`/api/channels/${channel.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          isTracking: !channel.isTracking
-        })
-      });
+      await apiRequest(
+        'PATCH',
+        `/api/channels/${channel.id}`,
+        { isTracking: !channel.isTracking }
+      );
       
       // Invalidate channels query
       queryClient.invalidateQueries({ queryKey: ['/api/channels'] });
@@ -89,7 +88,7 @@ const ConnectionConfig = () => {
       </CardHeader>
       <CardContent>
         {channels.length === 0 ? (
-          <div className="text-center p-6 text-gray-500">
+          <div className="text-center p-6 text-gray-600">
             <p className="mb-4">No channels configured for tracking.</p>
             <Link href="/api-settings">
               <Button className="bg-primary text-white hover:bg-primary/90">
@@ -118,7 +117,7 @@ const ConnectionConfig = () => {
                        channel.status === 'connecting' ? 'Connecting' : 'Inactive'}
                     </Badge>
                   </div>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-600">
                     {channel.isTracking 
                       ? 'Currently tracking messages' 
                       : 'Not tracking messages'}

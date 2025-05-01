@@ -64,7 +64,7 @@ const ConnectionStatus = () => {
             <LinkIcon className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm text-neutral-300">API Connection</p>
+            <p className="text-sm text-neutral-500">API Connection</p>
             <div className="flex items-center">
               <span className={`h-2 w-2 rounded-full mr-2 ${
                 data.apiConnection === 'connected' ? 'bg-green-500' : 'bg-amber-500'
@@ -81,7 +81,7 @@ const ConnectionStatus = () => {
             <Database className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm text-neutral-300">Database</p>
+            <p className="text-sm text-neutral-500">Database</p>
             <div className="flex items-center">
               <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>
               <p className="font-medium">Active</p>
@@ -100,7 +100,7 @@ const ConnectionStatus = () => {
             <History className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm text-neutral-300">Streaming Status</p>
+            <p className="text-sm text-neutral-500">Streaming Status</p>
             <div className="flex items-center">
               <span className={`h-2 w-2 rounded-full mr-2 ${
                 data.trackedChannelCount > 0 ? 'bg-amber-500' : 'bg-red-500'

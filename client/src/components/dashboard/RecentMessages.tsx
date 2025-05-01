@@ -142,7 +142,7 @@ const RecentMessages = () => {
           ))}
           
           {data.messages.length === 0 && (
-            <div className="text-center p-6 text-gray-500">
+            <div className="text-center p-6 text-gray-600">
               No messages found. Start tracking channels to see chat messages.
             </div>
           )}
