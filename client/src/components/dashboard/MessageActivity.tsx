@@ -1,106 +1,110 @@
-import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-type TimeRange = "day" | "week" | "month";
+interface MessagesByHour {
+  hour: string;
+  count: number;
+}
+
+// Demo data for message activity (this would normally come from the backend)
+const mockMessageData = [
+  { hour: '00:00', count: 42 },
+  { hour: '02:00', count: 28 },
+  { hour: '04:00', count: 15 },
+  { hour: '06:00', count: 20 },
+  { hour: '08:00', count: 45 },
+  { hour: '10:00', count: 78 },
+  { hour: '12:00', count: 95 },
+  { hour: '14:00', count: 102 },
+  { hour: '16:00', count: 85 },
+  { hour: '18:00', count: 92 },
+  { hour: '20:00', count: 75 },
+  { hour: '22:00', count: 58 },
+];
 
 const MessageActivity = () => {
-  const [timeRange, setTimeRange] = useState<TimeRange>("day");
-  
-  // Demo data for chart
-  const generateChartData = () => {
-    if (timeRange === "day") {
-      return Array.from({ length: 24 }, (_, i) => ({
-        name: `${i}:00`,
-        messages: Math.floor(Math.random() * 500) + 50,
-      }));
-    } else if (timeRange === "week") {
-      const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-      return days.map(day => ({
-        name: day,
-        messages: Math.floor(Math.random() * 5000) + 1000,
-      }));
-    } else {
-      return Array.from({ length: 30 }, (_, i) => ({
-        name: `${i + 1}`,
-        messages: Math.floor(Math.random() * 15000) + 5000,
-      }));
-    }
-  };
-  
-  const { data, isLoading } = useQuery({
-    queryKey: ['/api/messages', { timeRange }],
-    enabled: false, // Disable actual fetching for this demo
-    initialData: { chartData: generateChartData() }
+  const { data, isLoading, error } = useQuery<MessagesByHour[]>({
+    queryKey: ['/api/statistics/messages/hourly'],
+    // Fallback to demo data until backend endpoint is implemented
+    queryFn: async () => {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return mockMessageData;
+    },
+    refetchInterval: 60000 // 1 minute
   });
-
-  return (
-    <Card className="col-span-2">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-base font-medium">Message Activity</CardTitle>
-        <div className="flex">
-          <Button
-            variant={timeRange === "day" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setTimeRange("day")}
-            className="text-xs"
-          >
-            Day
-          </Button>
-          <Button
-            variant={timeRange === "week" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setTimeRange("week")}
-            className="text-xs"
-          >
-            Week
-          </Button>
-          <Button
-            variant={timeRange === "month" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setTimeRange("month")}
-            className="text-xs"
-          >
-            Month
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-4">
-        {isLoading ? (
-          <Skeleton className="h-64 w-full" />
-        ) : (
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.chartData} barSize={timeRange === "day" ? 15 : 30}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis 
-                  dataKey="name" 
-                  tick={{ fontSize: 12 }} 
-                  tickLine={false}
-                  axisLine={{ stroke: '#E0E0E0' }}
-                />
-                <YAxis 
-                  tick={{ fontSize: 12 }} 
-                  tickLine={false} 
-                  axisLine={false}
-                  tickFormatter={(value) => value.toLocaleString()}
-                />
-                <Tooltip 
-                  formatter={(value) => [value.toLocaleString(), "Messages"]}
-                  labelFormatter={(label) => `Time: ${label}`}
-                />
-                <Bar 
-                  dataKey="messages" 
-                  fill="hsl(var(--primary))" 
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+  
+  if (isLoading) {
+    return (
+      <Card className="col-span-1 lg:col-span-2">
+        <CardHeader>
+          <CardTitle>Message Activity</CardTitle>
+          <CardDescription>Message volume over the last 24 hours</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[250px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (error || !data) {
+    return (
+      <Card className="col-span-1 lg:col-span-2">
+        <CardHeader>
+          <CardTitle>Message Activity</CardTitle>
+          <CardDescription>Message volume over the last 24 hours</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-red-500 p-4 text-center">
+            Failed to load message activity data
           </div>
-        )}
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Find max value for better visualization
+  const maxCount = Math.max(...data.map(item => item.count));
+  
+  return (
+    <Card className="col-span-1 lg:col-span-2">
+      <CardHeader>
+        <CardTitle>Message Activity</CardTitle>
+        <CardDescription>Message volume over the last 24 hours</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[250px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={data}
+              margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="hour" />
+              <YAxis domain={[0, maxCount + 10]} />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'white', 
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '4px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }} 
+              />
+              <Legend />
+              <Line 
+                type="monotone" 
+                dataKey="count" 
+                name="Messages" 
+                stroke="var(--primary)" 
+                strokeWidth={2} 
+                activeDot={{ r: 6 }} 
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );

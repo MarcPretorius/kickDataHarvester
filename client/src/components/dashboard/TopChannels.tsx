@@ -1,70 +1,119 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tv } from "lucide-react";
-import StatusBadge from "@/components/common/StatusBadge";
-import { Channel } from "@shared/schema";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
+
+interface ChannelData {
+  name: string;
+  messageCount: number;
+}
+
+// Demo data for top channels (this would normally come from the backend)
+const mockChannelData = [
+  { name: 'test_channel', messageCount: 1248 },
+  { name: 'gaming_live', messageCount: 836 },
+  { name: 'kick_official', messageCount: 732 },
+  { name: 'channel3', messageCount: 621 },
+  { name: 'esports_now', messageCount: 497 },
+];
 
 const TopChannels = () => {
-  const { data, isLoading } = useQuery({
-    queryKey: ['/api/channels'],
+  const { data, isLoading, error } = useQuery<ChannelData[]>({
+    queryKey: ['/api/statistics/channels/top'],
+    // Fallback to demo data until backend endpoint is implemented
+    queryFn: async () => {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      return mockChannelData;
+    },
+    refetchInterval: 60000 // 1 minute
   });
-
+  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Top Channels</CardTitle>
+          <CardDescription>Most active channels by message count</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[250px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (error || !data) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Top Channels</CardTitle>
+          <CardDescription>Most active channels by message count</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-red-500 p-4 text-center">
+            Failed to load channel data
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Sort data by message count in descending order
+  const sortedData = [...data].sort((a, b) => b.messageCount - a.messageCount);
+  
+  const colors = ['#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af'];
+  
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-base font-medium">Top Channels</CardTitle>
-        <Button variant="link" size="sm" className="text-primary">
-          View All
-        </Button>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Top Channels</CardTitle>
+          <CardDescription>Most active channels by message count</CardDescription>
+        </div>
+        <Link href="/stored-data">
+          <Button variant="outline" size="sm" className="gap-1">
+            <ExternalLink className="h-4 w-4" />
+            View All
+          </Button>
+        </Link>
       </CardHeader>
-      
-      <CardContent className="pt-2">
-        {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="py-2 border-b border-neutral-100">
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div>
-            {data && data.length > 0 ? (
-              data
-                .sort((a: Channel, b: Channel) => b.messageCount - a.messageCount)
-                .slice(0, 5)
-                .map((channel: Channel) => (
-                  <div key={channel.id} className="py-2 border-b border-neutral-100">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-md bg-primary bg-opacity-10 flex items-center justify-center mr-3">
-                          <Tv className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{channel.name}</p>
-                          <p className="text-xs text-neutral-300">
-                            {channel.messageCount.toLocaleString()} messages
-                          </p>
-                        </div>
-                      </div>
-                      <div>
-                        <StatusBadge status={channel.status} />
-                      </div>
-                    </div>
-                  </div>
-                ))
-            ) : (
-              <div className="py-8 text-center">
-                <p className="text-sm text-neutral-400">No channels tracked yet</p>
-                <Button variant="link" className="mt-2 text-primary text-sm">
-                  Add a channel
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+      <CardContent>
+        <div className="h-[250px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={sortedData}
+              layout="vertical"
+              margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+              <XAxis type="number" />
+              <YAxis 
+                dataKey="name" 
+                type="category" 
+                tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
+              />
+              <Tooltip 
+                formatter={(value, name) => [value, 'Messages']}
+                labelFormatter={(label) => `Channel: ${label}`}
+                contentStyle={{ 
+                  backgroundColor: 'white', 
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '4px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }} 
+              />
+              <Bar dataKey="messageCount" name="Messages">
+                {sortedData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );
