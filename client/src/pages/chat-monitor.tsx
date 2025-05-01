@@ -10,26 +10,55 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useKeywordNotification } from "@/hooks/useKeywordNotification";
 import { ChatMessage, Channel } from "@shared/schema";
 import StatusBadge from "@/components/common/StatusBadge";
+import KeywordFilter from "@/components/chat/KeywordFilter";
 import { format } from "date-fns";
-import { User, MessageSquare, Filter } from "lucide-react";
+import { User, MessageSquare, Filter, Bell } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+// Define the types for API responses
+interface ChannelsResponse {
+  [key: string]: any;
+  channels?: Channel[];
+}
+
+interface MessagesResponse {
+  [key: string]: any;
+  messages?: ChatMessage[];
+}
 
 const ChatMonitor = () => {
+  const { toast } = useToast();
   const [selectedChannel, setSelectedChannel] = useState<string>("all");
   const [autoScroll, setAutoScroll] = useState(true);
   const [filter, setFilter] = useState("");
   const [messageTab, setMessageTab] = useState("live");
+  const [showKeywords, setShowKeywords] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   
+  // Set up keyword notification
+  const { checkMessage } = useKeywordNotification([], {
+    onMatch: (message, keyword) => {
+      toast({
+        title: `Keyword match: "${keyword}"`,
+        description: `From ${message.username}: ${message.message}`,
+      });
+    }
+  });
+  
   // Fetch available channels
-  const { data: channels, isLoading: isLoadingChannels } = useQuery({
+  const { data: channelsData, isLoading: isLoadingChannels } = useQuery<ChannelsResponse>({
     queryKey: ['/api/channels'],
   });
   
+  // Extract channels from response
+  const channels = channelsData?.channels || [];
+  
   // Fetch initial messages
-  const { data: initialMessages, isLoading: isLoadingMessages } = useQuery({
+  const { data: messagesData, isLoading: isLoadingMessages } = useQuery<MessagesResponse>({
     queryKey: ['/api/messages', { 
       limit: 100,
       channelId: selectedChannel !== "all" ? parseInt(selectedChannel) : undefined
@@ -42,6 +71,9 @@ const ChatMonitor = () => {
       if (data.type === 'newMessage') {
         const message = data.message as ChatMessage;
         
+        // Check for keyword matches
+        checkMessage(message);
+        
         // Only add message if it matches the selected channel filter
         if (selectedChannel === "all" || message.channelId.toString() === selectedChannel) {
           setMessages(prev => [message, ...prev].slice(0, 1000)); // Keep last 1000 messages
@@ -52,10 +84,10 @@ const ChatMonitor = () => {
   
   // Initialize messages from the query
   useEffect(() => {
-    if (initialMessages?.messages) {
-      setMessages(initialMessages.messages);
+    if (messagesData?.messages && Array.isArray(messagesData.messages)) {
+      setMessages(messagesData.messages);
     }
-  }, [initialMessages]);
+  }, [messagesData]);
   
   // Scroll to bottom when new messages arrive if autoScroll is enabled
   useEffect(() => {
@@ -76,7 +108,7 @@ const ChatMonitor = () => {
   });
   
   const getChannelName = (channelId: number) => {
-    const channel = channels?.find((c: Channel) => c.id === channelId);
+    const channel = channels.find((c: Channel) => c.id === channelId);
     return channel?.name || 'Unknown';
   };
 
@@ -88,6 +120,20 @@ const ChatMonitor = () => {
           Track and analyze chat messages in real-time. Filter by channel, user, or content.
         </p>
       </div>
+      
+      {/* Keyword Notifications Panel */}
+      {showKeywords && (
+        <div className="mb-6">
+          <KeywordFilter
+            onMatchFound={(message, keyword) => {
+              toast({
+                title: `Keyword Match: "${keyword}"`,
+                description: `From ${message.username}: ${message.message}`,
+              });
+            }}
+          />
+        </div>
+      )}
       
       <Card className="mb-6">
         <CardHeader className="flex flex-row items-center justify-between py-4 px-5 border-b border-neutral-100">
@@ -128,6 +174,16 @@ const ChatMonitor = () => {
                 onChange={(e) => setFilter(e.target.value)}
               />
             </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1"
+              onClick={() => setShowKeywords(!showKeywords)}
+            >
+              <Bell className="h-4 w-4" />
+              {showKeywords ? 'Hide Keywords' : 'Keywords'}
+            </Button>
           </div>
         </CardHeader>
         
