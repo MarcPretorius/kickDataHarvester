@@ -106,13 +106,16 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
   
   useEffect(() => {
     if (automaticOpen) {
+      // Only attempt to connect when the component mounts
       connect();
     }
     
+    // Only disconnect when the component unmounts
     return () => {
       disconnect();
     };
-  }, [automaticOpen, connect, disconnect]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [automaticOpen]); // Removed dependencies to prevent re-connection cycles
   
   return {
     isConnected,

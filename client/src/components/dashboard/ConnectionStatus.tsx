@@ -1,10 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, Database, History } from "lucide-react";
+import { Link as LinkIcon, Database, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "wouter";
+
+// Define the status response type
+interface StatusResponse {
+  apiConnection: string;
+  databaseStatus: string;
+  messageCount: number;
+  activeUserCount: number;
+  trackedChannelCount: number;
+  dataStorageSize: number;
+}
 
 const ConnectionStatus = () => {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<StatusResponse>({
     queryKey: ['/api/status'],
     refetchInterval: 5000 // Refresh every 5 seconds
   });
@@ -32,6 +43,15 @@ const ConnectionStatus = () => {
     );
   }
 
+  if (!data) {
+    return (
+      <div className="bg-red-50 p-4 rounded-lg mb-6">
+        <h3 className="text-red-800 font-medium">Connection Error</h3>
+        <p className="text-red-600 text-sm">Failed to load connection status. Please try again later.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-wrap items-center mb-6">
       <div className="mr-6 mb-2">
@@ -41,7 +61,7 @@ const ConnectionStatus = () => {
               ? 'bg-green-100 text-green-600' 
               : 'bg-amber-100 text-amber-600'
           }`}>
-            <Link className="h-5 w-5" />
+            <LinkIcon className="h-5 w-5" />
           </div>
           <div>
             <p className="text-sm text-neutral-300">API Connection</p>
