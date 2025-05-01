@@ -1,13 +1,9 @@
 // Load environment variables from .env file
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import pg from 'pg';
-const { Pool } = pg;
+const dotenv = require('dotenv');
+const path = require('path');
+const { Pool } = require('pg');
 
-// Get the directory name using ESM syntax
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Get the directory name
 const rootDir = path.resolve(__dirname, '..');
 
 // Load .env file

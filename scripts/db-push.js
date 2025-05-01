@@ -1,13 +1,10 @@
 // Load environment variables from .env file
-import dotenv from 'dotenv';
-import { execSync } from 'child_process';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
+const dotenv = require('dotenv');
+const { execSync } = require('child_process');
+const path = require('path');
+const fs = require('fs');
 
-// Get the directory name using ESM syntax
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Get the directory name
 const rootDir = path.resolve(__dirname, '..');
 
 // Load .env file
