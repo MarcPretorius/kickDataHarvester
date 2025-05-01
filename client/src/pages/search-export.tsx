@@ -37,7 +37,7 @@ const SearchExport = () => {
   });
   
   // Fetch channels
-  const { data: channels } = useQuery({
+  const { data: channels = [] } = useQuery<Channel[]>({
     queryKey: ['/api/channels'],
   });
   
@@ -113,7 +113,7 @@ const SearchExport = () => {
   };
   
   const toggleAllChannels = (select: boolean) => {
-    if (select && channels) {
+    if (select) {
       setSelectedChannels(channels.map((channel: Channel) => channel.id.toString()));
     } else {
       setSelectedChannels([]);
@@ -208,7 +208,7 @@ const SearchExport = () => {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="all">All Channels</SelectItem>
-                                {channels?.map((channel: Channel) => (
+                                {channels.map((channel: Channel) => (
                                   <SelectItem key={channel.id} value={channel.id.toString()}>
                                     {channel.name}
                                   </SelectItem>
@@ -409,7 +409,7 @@ const SearchExport = () => {
                     </div>
                     
                     <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto border rounded-md p-2">
-                      {channels?.map((channel: Channel) => (
+                      {channels.map((channel: Channel) => (
                         <div key={channel.id} className="flex items-center">
                           <Checkbox 
                             id={`channel-${channel.id}`} 
@@ -424,7 +424,7 @@ const SearchExport = () => {
                           </Label>
                         </div>
                       ))}
-                      {!channels?.length && (
+                      {channels.length === 0 && (
                         <p className="text-sm text-neutral-400 w-full text-center py-2">
                           No channels available
                         </p>
