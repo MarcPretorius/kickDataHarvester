@@ -49,19 +49,19 @@ export default function ModerationPage() {
   });
 
   // Query for flagged messages
-  const flaggedMessagesQuery = useQuery({
+  const flaggedMessagesQuery = useQuery<{messages: ChatMessage[]}>({
     queryKey: ['/api/messages/flagged'],
     queryFn: getQueryFn({ on401: 'returnNull' })
   });
 
   // Query for content filters
-  const filtersQuery = useQuery({
+  const filtersQuery = useQuery<ContentFilter[]>({
     queryKey: ['/api/filters'],
     queryFn: getQueryFn({ on401: 'returnNull' })
   });
 
   // Query for searched messages
-  const searchMessagesQuery = useQuery({
+  const searchMessagesQuery = useQuery<{messages: ChatMessage[]}>({
     queryKey: ['/api/messages/search', searchTerm],
     queryFn: getQueryFn({ on401: 'returnNull' }),
     enabled: !!searchTerm
@@ -74,14 +74,11 @@ export default function ModerationPage() {
       action: 'hide' | 'unhide' | 'flag' | 'unflag';
       reason?: string;
     }) => {
-      return apiRequest('/api/messages/moderate', {
-        method: 'POST',
-        body: JSON.stringify({
-          messageId: params.messageId,
-          action: params.action,
-          reason: params.reason || null,
-          moderatedBy: 'Admin'
-        })
+      return apiRequest('/api/messages/moderate', 'POST', {
+        messageId: params.messageId,
+        action: params.action,
+        reason: params.reason || null,
+        moderatedBy: 'Admin'
       });
     },
     onSuccess: () => {
@@ -108,10 +105,7 @@ export default function ModerationPage() {
   // Mutation for creating content filters
   const createFilterMutation = useMutation({
     mutationFn: async (filter: any) => {
-      return apiRequest('/api/filters', {
-        method: 'POST',
-        body: JSON.stringify(filter)
-      });
+      return apiRequest('/api/filters', 'POST', filter);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/filters'] });
@@ -140,10 +134,7 @@ export default function ModerationPage() {
   // Mutation for updating content filters
   const updateFilterMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: number; updates: any }) => {
-      return apiRequest(`/api/filters/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(updates)
-      });
+      return apiRequest(`/api/filters/${id}`, 'PATCH', updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/filters'] });
@@ -166,9 +157,7 @@ export default function ModerationPage() {
   // Mutation for deleting content filters
   const deleteFilterMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/filters/${id}`, {
-        method: 'DELETE'
-      });
+      return apiRequest(`/api/filters/${id}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/filters'] });

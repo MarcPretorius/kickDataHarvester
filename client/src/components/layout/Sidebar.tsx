@@ -9,7 +9,8 @@ import {
   Search,
   Settings,
   LogOut,
-  User
+  User,
+  ShieldAlert
 } from "lucide-react";
 
 interface SidebarProps {
@@ -33,7 +34,8 @@ const Sidebar = ({ isSidebarOpen }: SidebarProps) => {
       items: [
         { name: "Stored Data", path: "/stored-data", icon: <Database className="mr-3" /> },
         { name: "User Analysis", path: "/user-analysis", icon: <Users className="mr-3" /> },
-        { name: "Search & Export", path: "/search-export", icon: <Search className="mr-3" /> }
+        { name: "Search & Export", path: "/search-export", icon: <Search className="mr-3" /> },
+        { name: "Moderation", path: "/moderation", icon: <ShieldAlert className="mr-3" /> }
       ]
     },
     {
