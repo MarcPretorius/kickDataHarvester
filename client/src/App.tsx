@@ -1,0 +1,27 @@
+import { Route, Switch } from "wouter";
+import Layout from "@/components/layout/Layout";
+import Dashboard from "@/pages/dashboard";
+import ChatMonitor from "@/pages/chat-monitor";
+import Analytics from "@/pages/analytics";
+import StoredData from "@/pages/stored-data";
+import UserAnalysis from "@/pages/user-analysis";
+import SearchExport from "@/pages/search-export";
+import ApiSettings from "@/pages/api-settings";
+import NotFound from "@/pages/not-found";
+
+function App() {
+  return (
+    <Switch>
+      <Route path="/" component={Dashboard} />
+      <Route path="/chat-monitor" component={ChatMonitor} />
+      <Route path="/analytics" component={Analytics} />
+      <Route path="/stored-data" component={StoredData} />
+      <Route path="/user-analysis" component={UserAnalysis} />
+      <Route path="/search-export" component={SearchExport} />
+      <Route path="/api-settings" component={ApiSettings} />
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+export default App;
