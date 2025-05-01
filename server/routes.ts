@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { WebSocketServer } from "ws";
 import WebSocket from "ws";
 import { kickChatClient } from "./websocket";
-import { InsertChatMessage, InsertChannel, insertChannelSchema } from "@shared/schema";
+import { InsertChatMessage, InsertChannel, insertChannelSchema, insertChatMessageSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -158,6 +158,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ message: 'Error fetching messages' });
+    }
+  });
+  
+  app.post('/api/messages', async (req, res) => {
+    try {
+      const validatedData = insertChatMessageSchema.parse(req.body);
+      
+      // Check if channel exists
+      const channel = await storage.getChannel(validatedData.channelId);
+      if (!channel) {
+        return res.status(400).json({ message: 'Channel does not exist' });
+      }
+      
+      const message = await storage.createChatMessage(validatedData);
+      
+      // Broadcast the new message to all connected clients
+      const broadcastData = {
+        type: 'new_message',
+        message
+      };
+      broadcastUpdate(broadcastData);
+      
+      res.status(201).json(message);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid message data', errors: error.errors });
+      } else {
+        console.error('Error creating message:', error);
+        res.status(500).json({ message: 'Error creating message' });
+      }
     }
   });
   
