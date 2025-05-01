@@ -7,6 +7,7 @@ import StoredData from "@/pages/stored-data";
 import UserAnalysis from "@/pages/user-analysis";
 import SearchExport from "@/pages/search-export";
 import ApiSettings from "@/pages/api-settings";
+import Moderation from "@/pages/moderation";
 import NotFound from "@/pages/not-found";
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
       <Route path="/user-analysis" component={UserAnalysis} />
       <Route path="/search-export" component={SearchExport} />
       <Route path="/api-settings" component={ApiSettings} />
+      <Route path="/moderation" component={Moderation} />
       <Route component={NotFound} />
     </Switch>
   );

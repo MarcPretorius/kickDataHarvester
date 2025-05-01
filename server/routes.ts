@@ -4,7 +4,16 @@ import { storage } from "./storage";
 import { WebSocketServer } from "ws";
 import WebSocket from "ws";
 import { kickChatClient } from "./websocket";
-import { InsertChatMessage, InsertChannel, insertChannelSchema, insertChatMessageSchema } from "@shared/schema";
+import { 
+  InsertChatMessage, 
+  InsertChannel, 
+  InsertContentFilter, 
+  ModerationAction,
+  insertChannelSchema, 
+  insertChatMessageSchema, 
+  insertContentFilterSchema,
+  moderationActionSchema 
+} from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -244,6 +253,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(statistics);
     } catch (error) {
       res.status(500).json({ message: 'Error fetching statistics' });
+    }
+  });
+
+  // Message moderation routes
+  app.post('/api/messages/moderate', async (req, res) => {
+    try {
+      const validatedData = moderationActionSchema.parse(req.body);
+      const updatedMessage = await storage.moderateMessage(validatedData);
+      
+      // Broadcast the moderation action to all connected clients
+      const broadcastData = {
+        type: 'moderation_update',
+        message: updatedMessage
+      };
+      broadcastUpdate(broadcastData);
+      
+      res.json(updatedMessage);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid moderation data', errors: error.errors });
+      } else {
+        console.error('Error moderating message:', error);
+        res.status(500).json({ message: 'Error moderating message' });
+      }
+    }
+  });
+
+  app.get('/api/messages/flagged', async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      
+      const messages = await storage.getFlaggedMessages(limit, offset);
+      
+      res.json({
+        messages,
+        pagination: {
+          limit,
+          offset,
+          hasMore: messages.length === limit
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching flagged messages' });
+    }
+  });
+
+  app.get('/api/messages/search', async (req, res) => {
+    try {
+      const searchTerm = req.query.term as string;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      
+      if (!searchTerm) {
+        return res.status(400).json({ message: 'Search term is required' });
+      }
+      
+      const messages = await storage.getMessagesByContent(searchTerm, limit, offset);
+      
+      res.json({
+        messages,
+        pagination: {
+          limit,
+          offset,
+          hasMore: messages.length === limit
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Error searching messages' });
+    }
+  });
+
+  // Content filter routes
+  app.get('/api/filters', async (req, res) => {
+    try {
+      const filters = await storage.getContentFilters();
+      res.json(filters);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching content filters' });
+    }
+  });
+
+  app.post('/api/filters', async (req, res) => {
+    try {
+      const validatedData = insertContentFilterSchema.parse(req.body);
+      const filter = await storage.createContentFilter(validatedData);
+      res.status(201).json(filter);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid filter data', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Error creating filter' });
+      }
+    }
+  });
+
+  app.patch('/api/filters/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const filter = await storage.getContentFilter(id);
+      
+      if (!filter) {
+        return res.status(404).json({ message: 'Filter not found' });
+      }
+      
+      const updates = req.body;
+      const updatedFilter = await storage.updateContentFilter(id, updates);
+      
+      res.json(updatedFilter);
+    } catch (error) {
+      res.status(500).json({ message: 'Error updating filter' });
+    }
+  });
+
+  app.delete('/api/filters/:id', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteContentFilter(id);
+      
+      if (success) {
+        res.status(204).send();
+      } else {
+        res.status(404).json({ message: 'Filter not found' });
+      }
+    } catch (error) {
+      res.status(500).json({ message: 'Error deleting filter' });
+    }
+  });
+
+  app.post('/api/filters/apply', async (req, res) => {
+    try {
+      const { message } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ message: 'Message content is required' });
+      }
+      
+      const result = await storage.applyContentFilters(message);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: 'Error applying content filters' });
     }
   });
 
