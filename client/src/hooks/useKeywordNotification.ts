@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import useSound from 'use-sound';
 
 // Sound file path relative to the public directory
-const NOTIFICATION_SOUND = '/notification.mp3';
+const NOTIFICATION_SOUND = '/notification.wav';
 
 interface KeywordNotificationOptions {
   enabled?: boolean;
