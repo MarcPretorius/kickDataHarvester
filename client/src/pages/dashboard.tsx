@@ -1,4 +1,3 @@
-import Layout from "@/components/layout/Layout";
 import ConnectionStatus from "@/components/dashboard/ConnectionStatus";
 import StatsOverview from "@/components/dashboard/StatsOverview";
 import MessageActivity from "@/components/dashboard/MessageActivity";
